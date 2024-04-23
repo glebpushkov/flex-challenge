@@ -15,7 +15,7 @@ password: **secret**
 
 The idea was to structure app on 3 layers: API, Service(domain, core), Persistence(database).\
 For such a simple app it feels like overkill, but as it's a coding challenge I selected a 'nice' decoupled structure.
-Disclaimer: I'm not very familiar with FastAPI best practices, so I would be glad to hear a feedback what could be done better. 
+Disclaimer: I'm not very familiar with FastAPI best practices, so I would be glad to hear feedback on what could be done better. 
 
 NOTE: sqlite is used as a database, so each time you restart container - 
 you have to start from scratch 
@@ -29,6 +29,6 @@ not covered / todos:
 - more tests
 - no db migrations
 - no db indexes for trader_id & delivery_day
-- didn't used async
+- didn't use async
 - poetry / black / linters / .dockerignore / logger
 - ...
