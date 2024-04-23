@@ -11,7 +11,7 @@ col_delivery_hour = 'delivery_hour'
 col_trader_id = 'trader_id'
 col_execution_time = 'execution_time'
 
-col_names = {
+expected_col_names = {
     col_id,
     col_price,
     col_quantity,
@@ -26,23 +26,30 @@ direction_sell = 'sell'
 direction_buy = 'buy'
 
 
-def load_csv_to_dataframe(file_path):
+def load_csv_to_dataframe(filepath):
+    df = pd.DataFrame()
     try:
-        df = pd.read_csv(file_path)
-        return df
+        df = pd.read_csv(filepath)
     except FileNotFoundError:
         print('Error: File not found.')
-        return None
     except pd.errors.ParserError:
         print('Error: Failed to parse CSV file')
-        return None
     except Exception as e:
         print(f'An error occurred: {e}')
-        return None
+    finally:
+        return df
 
 
-def run(path, trader_id):
-    df = load_csv_to_dataframe(path)
+def run(filepath, trader_id):
+    df = load_csv_to_dataframe(filepath)
+    if len(df) == 0:
+        print("Nothing to process")
+        return
+
+    # small validation
+    if not all([column in df.columns for column in expected_col_names]):
+        print(f"Missing columns. Expected {expected_col_names}")
+        return
 
     # filter by trader_id if provided
     if trader_id:
@@ -93,10 +100,10 @@ def run(path, trader_id):
 
 def main():
     parser = argparse.ArgumentParser(description='Cli to build a report based on daily CSV file with exported trades')
-    parser.add_argument('path', type=str, help='Path to the CSV file to load.')
-    parser.add_argument('--trader_id', type=str, default='', help='Trader id')
+    parser.add_argument('filepath', type=str, help='Path to the CSV file to load')
+    parser.add_argument('--trader_id', type=str, default='', help='Trader id to generate report for a specific trader')
     args = parser.parse_args()
-    run(args.path, args.trader_id)
+    run(args.filepath, args.trader_id)
 
 
 if __name__ == '__main__':
