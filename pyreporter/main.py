@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-
+from tabulate import tabulate
 
 col_id = 'id'
 col_price = 'price'
@@ -49,30 +49,46 @@ def run(path, trader_id):
         df = df[df['trader_id'] == trader_id]
         if len(df) == 0:
             print(f"No records found for trader_id {trader_id}")
+            return
 
     # convert datetime to hours, to group by hour later. E.g. 2023-02-28T12:20:35Z -> 12
     try:
         df[col_execution_time] = pd.to_datetime(df[col_execution_time])
     except ValueError:
         print("File contains invalid values in 'execution_time' column, aborting")
-    df['execution_hour'] = df[col_execution_time].dt.hour.astype(str)
+    df['execution_hour'] = df[col_execution_time].dt.hour
 
     # group and apply aggregations
     is_sell_col = df[col_direction] == direction_sell
     is_buy_col = df[col_direction] == direction_buy
-    total_df = df.groupby('execution_hour').agg(
+    hourly_df = df.groupby('execution_hour').agg(
         records_count=('execution_hour', 'count'),
         total_sell_quantity=(col_quantity, lambda q: q[is_sell_col].sum()),
         total_buy_quantity=(col_quantity, lambda q: q[is_buy_col].sum()),
         sell_pnl=(col_quantity, lambda q: (q * df.loc[q.index, col_price])[is_sell_col].sum()),
         buy_pnl=(col_quantity, lambda q: (q * df.loc[q.index, col_price])[is_buy_col].sum())
     )
-    total_df['pnl'] = total_df['buy_pnl'] - total_df['sell_pnl']
+    hourly_df['pnl'] = hourly_df['sell_pnl'] - hourly_df['buy_pnl']
 
-    # output results
-    print(total_df)
-    total_df.sort_values(by='execution_hour')
-    print(total_df)
+    # calculate the total values for the last row of output
+    last_row = hourly_df.agg({'records_count': 'sum', 'total_buy_quantity': 'sum', 'total_sell_quantity': 'sum', 'pnl': 'sum'})
+    last_row['execution_hour'] = "Total"
+
+    # prepare output table
+    hourly_df.sort_values(by='execution_hour')
+    hourly_df.reset_index(inplace=True)
+    hourly_df.drop(['buy_pnl', 'sell_pnl'], axis=1, inplace=True)
+    hourly_df['execution_hour'] = hourly_df['execution_hour'].apply(lambda hour: f"{hour} - {hour + 1}")
+    hourly_df.loc[len(hourly_df.index)] = last_row
+    print_names_mapping = {
+        'execution_hour': 'Hour',
+        'records_count': 'Number of Trades',
+        'total_buy_quantity': 'Total BUY [MW]',
+        'total_sell_quantity': 'Total Sell [MW]',
+        'pnl': 'PnL [Eur]',
+    }
+    hourly_df.rename(columns=print_names_mapping, inplace=True)
+    print(tabulate(hourly_df, headers='keys', tablefmt='grid', showindex='never'))
 
 
 def main():
